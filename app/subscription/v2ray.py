@@ -19,6 +19,7 @@ from config import (
     USER_AGENT_TEMPLATE,
     V2RAY_SETTINGS_TEMPLATE,
     V2RAY_SUBSCRIPTION_TEMPLATE,
+    V2RAY_SUBSCRIPTION_TEMPLATE_PROXY_ALL,
 )
 
 
@@ -529,6 +530,7 @@ class V2rayJsonConfig(str):
     def __init__(self):
         self.config = []
         self.template = render_template(V2RAY_SUBSCRIPTION_TEMPLATE)
+        self.template_proxy_all = render_template(V2RAY_SUBSCRIPTION_TEMPLATE_PROXY_ALL)
         self.mux_template = render_template(MUX_TEMPLATE)
         user_agent_data = json.loads(render_template(USER_AGENT_TEMPLATE))
 
@@ -553,8 +555,10 @@ class V2rayJsonConfig(str):
 
         del user_agent_data, grpc_user_agent_data
 
-    def add_config(self, remarks, outbounds):
+    def add_config(self, remarks, outbounds, is_proxy_all):
         json_template = json.loads(self.template)
+        if is_proxy_all:
+            json_template = json.loads(self.template_proxy_all)
         json_template["remarks"] = remarks
         json_template["outbounds"] = outbounds + json_template["outbounds"]
         self.config.append(json_template)
@@ -855,7 +859,6 @@ class V2rayJsonConfig(str):
                         {
                             "id": id,
                             "alterId": 0,
-                            "email": "https://gozargah.github.io/marzban/",
                             "security": "auto"
                         }
                     ],
@@ -875,7 +878,6 @@ class V2rayJsonConfig(str):
                             "id": id,
                             "security": "auto",
                             "encryption": "none",
-                            "email": "https://gozargah.github.io/marzban/",
                             "alterId": 0,
                             "flow": flow
                         }
@@ -891,8 +893,7 @@ class V2rayJsonConfig(str):
                 {
                     "address": address,
                     "port": port,
-                    "password": password,
-                    "email": "https://gozargah.github.io/marzban/",
+                    "password": password
                 }
             ]
         }
@@ -905,7 +906,6 @@ class V2rayJsonConfig(str):
                     "address": address,
                     "port": port,
                     "password": password,
-                    "email": "https://gozargah.github.io/marzban/",
                     "method": method,
                     "uot": False,
                 }
@@ -1140,5 +1140,6 @@ class V2rayJsonConfig(str):
         if inbound.get('mux_enable', False):
             outbound["mux"] = mux_config
             outbound["mux"]["enabled"] = True
-
-        self.add_config(remarks=remark, outbounds=outbounds)
+        is_proxy_all = inbound['tag'].endswith('proxy_all')
+        self.add_config(remarks=remark, outbounds=outbounds, is_proxy_all=is_proxy_all)
+        

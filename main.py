@@ -123,6 +123,11 @@ Then, navigate to {click.style(f'http://{ip}:{UVICORN_PORT}', bold=True)} on you
             bind_args['host'] = ip
             bind_args['port'] = UVICORN_PORT
 
+    # Bypass SSL restrictions
+    logger.warning(f"""{click.style('BYPASSING SSL RESTRICTIONS!!!', blink=True, bold=True, fg="red")}
+    """)
+    bind_args['host'] = UVICORN_HOST
+
     if DEBUG:
         bind_args['uds'] = None
         bind_args['host'] = '0.0.0.0'

@@ -21,6 +21,9 @@ class XRayCore:
         self.process = None
         self.restarting = False
 
+        self.tail_access_process = None
+        self.tail_error_process = None
+
         self._logs_buffer = deque(maxlen=100)
         self._temp_log_buffers = {}
         self._on_start_funcs = []
@@ -65,22 +68,26 @@ class XRayCore:
                 elif not self.process or self.process.poll() is not None:
                     break
 
-        def capture_only():
-            while self.process:
-                output = self.process.stdout.readline()
+        def capture_only(process):
+            while process:
+                output = process.stdout.readline()
                 if output:
                     output = output.strip()
                     self._logs_buffer.append(output)
                     for buf in list(self._temp_log_buffers.values()):
                         buf.append(output)
 
-                elif not self.process or self.process.poll() is not None:
+                elif not process or process.poll() is not None:
                     break
 
         if DEBUG:
             threading.Thread(target=capture_and_debug_log).start()
         else:
-            threading.Thread(target=capture_only).start()
+            threading.Thread(target=capture_only, args=(self.process,)).start()
+            if self.tail_access_process:
+                threading.Thread(target=capture_only, args=(self.tail_access_process,)).start()
+            if self.tail_error_process:
+                threading.Thread(target=capture_only, args=(self.tail_error_process,)).start()
 
     @contextmanager
     def get_logs(self):
@@ -129,6 +136,24 @@ class XRayCore:
         self.process.stdin.close()
         logger.warning(f"Xray core {self.version} started")
 
+        access = config.get('log', {}).get('access')
+        if access not in ('none', 'error', ''):
+            self.tail_access_process = subprocess.Popen(
+                ['tail','-F', '-n 0', access],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
+            )
+
+        error = config.get('log', {}).get('error')
+        if error not in ('none', 'error', ''):
+            self.tail_error_process = subprocess.Popen(
+                ['tail','-F', '-n 0', error],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
+            )
+
         self.__capture_process_logs()
 
         # execute on start functions
@@ -142,6 +167,13 @@ class XRayCore:
         self.process.terminate()
         self.process = None
         logger.warning("Xray core stopped")
+
+        if self.tail_access_process:
+            self.tail_access_process.terminate()
+            self.tail_access_process = None
+        if self.tail_error_process:
+            self.tail_error_process.terminate()
+            self.tail_error_process = None
 
         # execute on stop functions
         for func in self._on_stop_funcs:

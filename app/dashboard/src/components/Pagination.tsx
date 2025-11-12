@@ -59,17 +59,17 @@ function generatePageItems(total: number, current: number, width: number) {
     0,
     Math.min(total - width, current - Math.floor(width / 2))
   );
-  const items: (string | number)[] = new Array(width);
+  const items: string[] = new Array(width);
   for (let i = 0; i < width; i += 1) {
-    items[i] = i + left;
+    items[i] = (i + left).toString();
   }
   // replace non-ending items with placeholders
-  if (items[0] > 0) {
-    items[0] = 0;
+  if (parseInt(items[0]) > 0) {
+    items[0] = "0";
     items[1] = "prev-more";
   }
-  if (items[items.length - 1] < total - 1) {
-    items[items.length - 1] = total - 1;
+  if (parseInt(items[items.length - 1]) < total - 1) {
+    items[items.length - 1] = (total - 1).toString();
     items[items.length - 2] = "next-more";
   }
   return items;
