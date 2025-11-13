@@ -1,6 +1,6 @@
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.13
 
-FROM node:25-alpine AS build_ts
+FROM node:alpine AS build_ts
 
 ENV VITE_BASE_API=/api/
 
@@ -50,5 +50,3 @@ RUN ln -s /code/marzban-cli.py /usr/bin/marzban-cli \
     && marzban-cli completion install --shell bash
 
 CMD ["bash", "-c", "alembic upgrade head; python main.py"]
-
-#ENTRYPOINT ["tail", "-f", "/dev/null"]
