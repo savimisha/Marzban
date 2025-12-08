@@ -14,7 +14,7 @@ from app.db import models as db_models
 from app.models.proxy import ProxyTypes
 from app.models.user import UserStatus
 from app.utils.crypto import get_cert_SANs, get_x25519_public_key
-from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
+from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUNDS_MAP
 
 
 def merge_dicts(a, b):  # B will override A dictionary key and values
@@ -56,7 +56,11 @@ class XRayConfig(dict):
         self.inbounds = []
         self.inbounds_by_protocol = {}
         self.inbounds_by_tag = {}
-        self._fallbacks_inbound = self.get_inbound(XRAY_FALLBACKS_INBOUND_TAG)
+        self._fallbacks_inbound_dict = {}
+        if XRAY_FALLBACKS_INBOUNDS_MAP != "":
+            for item in XRAY_FALLBACKS_INBOUNDS_MAP.split(", "):
+                key, value = item.split(":")
+                self._fallbacks_inbound_dict[key] = value
         self._resolve_inbounds()
 
         self._apply_api()
@@ -170,9 +174,10 @@ class XRayConfig(dict):
             try:
                 settings['port'] = inbound['port']
             except KeyError:
-                if self._fallbacks_inbound:
+                if inbound["tag"] in self._fallbacks_inbound_dict:
                     try:
-                        settings['port'] = self._fallbacks_inbound['port']
+                        fallback_inbound = self.get_inbound(self._fallbacks_inbound_dict[inbound["tag"]])
+                        settings['port'] = fallback_inbound['port']
                         settings['is_fallback'] = True
                     except KeyError:
                         raise ValueError("fallbacks inbound doesn't have port")
@@ -186,9 +191,10 @@ class XRayConfig(dict):
 
                 if settings['is_fallback'] is True:
                     # probably this is a fallback
-                    security = self._fallbacks_inbound.get(
+                    fallback_inbound = self.get_inbound(self._fallbacks_inbound_dict[inbound["tag"]])
+                    security = fallback_inbound.get(
                         'streamSettings', {}).get('security')
-                    tls_settings = self._fallbacks_inbound.get(
+                    tls_settings = fallback_inbound.get(
                         'streamSettings', {}).get(f"{security}Settings", {})
 
                 settings['network'] = net

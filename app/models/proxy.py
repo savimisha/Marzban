@@ -204,4 +204,4 @@ class ProxyInbound(BaseModel):
     protocol: ProxyTypes
     network: str
     tls: str
-    port: Union[int, str]
+    port: Union[int, str, None]
